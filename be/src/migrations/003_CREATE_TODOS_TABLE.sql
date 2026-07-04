@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS todos(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(30) NOT NULL CHECK(title <> ''),
+    description VARCHAR(255),
+    isCompleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE 
+)
