@@ -12,6 +12,7 @@ interface RegisterType{
 const Register = () => {
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<RegisterType>({
     username: "",
     email: "",
@@ -29,6 +30,8 @@ const Register = () => {
   const handleSubmit = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
+
     try {
       const res = await api.post(ENDPOINTS.auth.register, formData);
       if(res.status === 201){
@@ -38,6 +41,8 @@ const Register = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error:any) {
       setError(error.response?.data?.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -105,9 +110,10 @@ const Register = () => {
 
           <button
             type="submit"
-            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition"
+            disabled={loading}
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition disabled:opacity-60"
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 

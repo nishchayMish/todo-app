@@ -14,6 +14,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -31,6 +32,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       const response = await api.post(ENDPOINTS.auth.login, formData);
@@ -55,6 +57,8 @@ const Login = () => {
     } catch (error: any) {
       const message = error.response?.data?.message || "Could not login";
       setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,9 +118,10 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition"
+            disabled={loading}
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition disabled:opacity-60"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
