@@ -1,4 +1,4 @@
-import { getOTP, sendOTPEmail } from "../../utils/helpers.js";
+import { getOTP, sendOTPForEmailVerification } from "../../utils/helpers.js";
 import { findUser, findLatestOTP, insertOTP, registerUser, setUserVerified, deleteOTPsByUserId, saveRefreshToken, fetchRefreshToken, updateRefreshToken } from "./auth.repository.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 export const registerUserService = async (username, email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await findUser(normalizedEmail);
+    const purpose = "email_verification";
 
     // Verified user already exists
     if (user?.is_verified) {
@@ -18,8 +19,8 @@ export const registerUserService = async (username, email, password) => {
     // User exists but not verified
     if (user && !user?.is_verified) {
         const otp = getOTP()
-        await insertOTP(user.id, otp);
-        await sendOTPEmail(user.email, otp);
+        await insertOTP(user.id, otp, purpose);
+        await sendOTPForEmailVerification(user.email, otp);
         return user;
     }
     
@@ -27,8 +28,8 @@ export const registerUserService = async (username, email, password) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await registerUser(username.trim(), normalizedEmail, hashedPassword);
     const otp = getOTP();
-    await insertOTP(newUser.id, otp);
-    await sendOTPEmail(newUser.email, otp);
+    await insertOTP(newUser.id, otp, purpose);
+    await sendOTPForEmailVerification(newUser.email, otp);
 
     return newUser;
 }
@@ -75,7 +76,7 @@ export const verifyUserService = async (email, otp) => {
 export const resendOtpService = async(email) => {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await findUser(normalizedEmail);
-
+    const purpose = "email_verification";
     if (!user) {
         throw {
             statusCode: 404,
@@ -91,8 +92,8 @@ export const resendOtpService = async(email) => {
   }
 
   const otp = getOTP();
-  await insertOTP(user.id, otp);
-  await sendOTPEmail(user.email, otp);
+  await insertOTP(user.id, otp, purpose);
+  await sendOTPForEmailVerification(user.email, otp);
 
   return {
     message: "OTP sent successfully",
@@ -103,7 +104,7 @@ export const resendOtpService = async(email) => {
 export const loginUserService = async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await findUser(normalizedEmail);
-
+    const purpose = "email_verification";
     if(!user){
         throw {
             statusCode: 401,
@@ -123,8 +124,8 @@ export const loginUserService = async (email, password) => {
     // unverified user agar login kare to uske email pe otp bej do
     if (user && !user?.is_verified) {
         const otp = getOTP()
-        await insertOTP(user.id, otp);
-        await sendOTPEmail(user.email, otp);
+        await insertOTP(user.id, otp, purpose);
+        await sendOTPForEmailVerification(user.email, otp);
         return user;
     }
 
@@ -201,3 +202,28 @@ export const refreshTokenService = async(refreshToken) => {
         newToken, newRefreshToken
     }
 }   
+
+export const forgotPasswordService = async(email) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const purpose = "forgot-password";
+
+    if(!normalizedEmail){
+        throw{
+            statusCode: 400,
+            message: "email is required"
+        }
+    }
+
+    const user = await findUser(normalizedEmail);
+
+    if(!user){
+        throw{
+            statusCode: 401,
+            message: "user not found"
+        }
+    }
+
+    const otp = getOTP();
+    await insertOTP(user.id, otp, purpose)
+    await sendOTPForResetPassword(user.email, otp);
+}

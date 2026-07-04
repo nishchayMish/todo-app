@@ -27,11 +27,11 @@ export const deleteOTPsByUserId = async (userId) => {
     await db.query("DELETE FROM otp WHERE user_id=$1", [userId])
 }
 
-export const insertOTP = async (userId, otp) => {
+export const insertOTP = async (userId, otp, purpose) => {
     await deleteOTPsByUserId(userId)
     const res = await db.query(
-        "INSERT INTO otp(user_id, otp, expires_at) VALUES($1, $2, NOW() + INTERVAL '3 minutes') RETURNING *",
-        [userId, otp]
+        "INSERT INTO otp(user_id, otp, purpose, expires_at) VALUES($1, $2, $3, NOW() + INTERVAL '3 minutes') RETURNING *",
+        [userId, otp, purpose]
     )
     return res.rows[0]
 }

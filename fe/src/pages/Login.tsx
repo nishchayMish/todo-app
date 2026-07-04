@@ -107,6 +107,12 @@ const Login = () => {
             />
           </div>
 
+          <Link to="/forgot-password">
+            <p className="block mb-3.5 text-sm font-medium text-slate-700 text-right hover:underline cursor-pointer">
+              Forgot you password
+            </p>
+          </Link>
+
           <button
             type="submit"
             className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition"

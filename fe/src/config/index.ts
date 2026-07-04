@@ -5,6 +5,8 @@ export const ENDPOINTS = {
       resendOTP: "/api/v1/resend-otp",
       refreshToken: "/api/v1/refresh-token",
       login: "/api/v1/login",
+      forgotPassword: "/api/v1/forgot-password",
+      resetPassword: "/api/v1/reset-password"
   },
   todos: {
       list: "/api/v1/todos",

@@ -11,7 +11,6 @@ const VerifyEmail = () => {
   const location = useLocation();
   const state = location.state as VerifyPageState | null;
 
-  const [email, setEmail] = useState(state?.email || "");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -41,11 +40,6 @@ const VerifyEmail = () => {
   };
 
   const handleResendOtp = async () => {
-    if (!email.trim()) {
-      setError("Enter your email first.");
-      return;
-    }
-
     setError("");
     setSuccess("");
     setResending(true);
@@ -87,19 +81,6 @@ const VerifyEmail = () => {
               {success}
             </div>
           )}
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Email
-            </label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="Enter your email"
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
-            />
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">

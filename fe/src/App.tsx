@@ -5,6 +5,7 @@ import Register from "./pages/Register"
 import VerifyEmail from "./pages/VerifyEmail"
 import Todos from "./pages/Todos"
 import ProtectedRoute from "./routes/ProtectedRoute"
+import ForgotPasswordPage from "./pages/ForgotPasswordPage"
 
 const App = () => {
   return (
@@ -13,6 +14,8 @@ const App = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-otp" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ForgotPasswordPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/todos" element={<Todos />}/>

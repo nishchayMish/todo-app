@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/axios";
 import { ENDPOINTS } from "../config";
 
@@ -10,8 +10,8 @@ interface RegisterType{
 }
 
 const Register = () => {
+  const navigate = useNavigate();
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [formData, setFormData] = useState<RegisterType>({
     username: "",
     email: "",
@@ -29,10 +29,11 @@ const Register = () => {
   const handleSubmit = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
     try {
-      await api.post(ENDPOINTS.auth.register, formData);
-      setSuccess("OTP sent to your email. Enter it on the verification page to verify your account.");
+      const res = await api.post(ENDPOINTS.auth.register, formData);
+      if(res.status === 201){
+        navigate("/verify-otp");
+      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error:any) {
       setError(error.response?.data?.message);
@@ -58,20 +59,7 @@ const Register = () => {
               {error}
             </div>
           )}
-          {success && (
-            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {success}
-              <p className="mt-2">
-                <Link
-                  to="/verify-otp"
-                  state={{ email: formData.email }}
-                  className="font-medium underline"
-                >
-                  Go to OTP verification
-                </Link>
-              </p>
-            </div>
-          )}
+    
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Username
