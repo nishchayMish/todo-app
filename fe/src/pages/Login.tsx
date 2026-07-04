@@ -37,9 +37,8 @@ const Login = () => {
       const result = response.data.result;
 
       if (!result?.token) {
-        navigate("/verify-otp", {
-          state: { email: formData.email },
-        });
+        sessionStorage.setItem("verifyEmail", formData.email);
+        navigate("/verify-otp", { state: { email: formData.email, startTimer: true } });
         return;
       }
 

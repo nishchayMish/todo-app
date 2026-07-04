@@ -32,7 +32,8 @@ const Register = () => {
     try {
       const res = await api.post(ENDPOINTS.auth.register, formData);
       if(res.status === 201){
-        navigate("/verify-otp");
+        sessionStorage.setItem("verifyEmail", formData.email);
+        navigate("/verify-otp", { state: { email: formData.email, startTimer: true } });
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error:any) {

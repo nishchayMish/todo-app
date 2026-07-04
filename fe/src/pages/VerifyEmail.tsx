@@ -1,21 +1,47 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/axios";
 import { ENDPOINTS } from "../config";
 
 type VerifyPageState = {
   email?: string;
+  startTimer?: boolean;
+};
+
+const RESEND_WAIT_SECONDS = 3 * 60; // 3 minutes
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
 const VerifyEmail = () => {
   const location = useLocation();
   const state = location.state as VerifyPageState | null;
+  const navigate = useNavigate();
 
+  const email = state?.email || sessionStorage.getItem("verifyEmail") || "";
+  const shouldStartTimer = state?.startTimer === true;
+
+  const [secondsLeft, setSecondsLeft] = useState(
+    shouldStartTimer ? RESEND_WAIT_SECONDS : 0
+  );
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+
+    const timer = setTimeout(() => {
+      setSecondsLeft(secondsLeft - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [secondsLeft]);
 
   const handleVerify = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,13 +50,17 @@ const VerifyEmail = () => {
     setVerifying(true);
 
     try {
-      await api.post(ENDPOINTS.auth.verifyUser, {
+      const response = await api.post(ENDPOINTS.auth.verifyUser, {
         email,
         otp,
       });
 
-      setSuccess("OTP verified successfully. You can login now.");
-      setOtp("");
+      if(response.status === 200){
+        navigate("/login");
+        sessionStorage.removeItem("verifyEmail");
+        setSuccess("OTP verified successfully. You can login now.");
+        setOtp("");
+      }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setError(error.response?.data?.message || "Could not verify OTP");
@@ -51,6 +81,7 @@ const VerifyEmail = () => {
 
       const message = response.data.message?.message || "OTP sent successfully";
       setSuccess(message);
+      setSecondsLeft(RESEND_WAIT_SECONDS);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setError(error.response?.data?.message || "Could not resend OTP");
@@ -65,7 +96,9 @@ const VerifyEmail = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Verify OTP</h1>
           <p className="mt-2 text-slate-500">
-            Enter the OTP sent to your email to verify your account.
+            {email
+              ? `Enter the OTP sent to ${email}`
+              : "Enter the OTP sent to your email to verify your account."}
           </p>
         </div>
 
@@ -103,14 +136,20 @@ const VerifyEmail = () => {
             {verifying ? "Verifying..." : "Verify OTP"}
           </button>
 
-          <button
-            type="button"
-            onClick={handleResendOtp}
-            disabled={resending}
-            className="w-full py-3 border border-slate-300 text-slate-900 rounded-xl font-medium hover:bg-slate-50 transition disabled:opacity-60"
-          >
-            {resending ? "Sending..." : "Resend OTP"}
-          </button>
+          {secondsLeft > 0 ? (
+            <p className="text-center text-sm text-slate-500">
+              Resend OTP in {formatTime(secondsLeft)}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={resending}
+              className="w-full py-3 border border-slate-300 text-slate-900 rounded-xl font-medium hover:bg-slate-50 transition disabled:opacity-60"
+            >
+              {resending ? "Sending..." : "Resend OTP"}
+            </button>
+          )}
         </form>
 
         <p className="text-center text-sm text-slate-500 mt-6">
