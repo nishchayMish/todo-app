@@ -69,3 +69,9 @@ export const updateRefreshToken = async(hashedNewRefreshToken, userId) => {
         [hashedNewRefreshToken, userId]
     );
 }
+
+export const updateUserPassword = async(newPassword, userId) => {
+    await db.query("UPDATE users SET password = $1 WHERE id = $2", 
+        [newPassword, userId]
+    );
+}

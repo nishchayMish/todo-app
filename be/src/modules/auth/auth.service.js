@@ -1,5 +1,5 @@
-import { getOTP, sendOTPForEmailVerification } from "../../utils/helpers.js";
-import { findUser, findLatestOTP, insertOTP, registerUser, setUserVerified, deleteOTPsByUserId, saveRefreshToken, fetchRefreshToken, updateRefreshToken } from "./auth.repository.js";
+import { getOTP, sendOTPForEmailVerification, sendOTPForResetPassword } from "../../utils/helpers.js";
+import { findUser, findLatestOTP, insertOTP, registerUser, setUserVerified, deleteOTPsByUserId, saveRefreshToken, fetchRefreshToken, updateRefreshToken, updateUserPassword } from "./auth.repository.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -226,4 +226,26 @@ export const forgotPasswordService = async(email) => {
     const otp = getOTP();
     await insertOTP(user.id, otp, purpose)
     await sendOTPForResetPassword(user.email, otp);
+
+    return user.id
+}
+
+export const resetPasswordService = async(otp, userId, password) => {
+    const result = await findLatestOTP(userId);  
+    if(!result){
+        throw{
+            statusCode: 404,
+            message: "no otp found"
+        }
+    }
+    if(result.otp !== otp){
+        throw{
+            statusCode: 400,  
+            message: "Invalid otp"
+        }
+    }
+
+    const newPassword = await bcrypt.hash(password, 10); 
+
+    await updateUserPassword(newPassword, userId);
 }

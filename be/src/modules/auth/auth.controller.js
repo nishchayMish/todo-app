@@ -1,4 +1,4 @@
-import { forgotPasswordService, loginUserService, refreshTokenService, registerUserService, resendOtpService, verifyUserService } from "./auth.service.js";
+import { forgotPasswordService, loginUserService, refreshTokenService, registerUserService, resendOtpService, resetPasswordService, verifyUserService } from "./auth.service.js";
 
 export const registerUserController = async(req, res) => {
     try {
@@ -78,7 +78,22 @@ export const forgotPasswordController = async(req, res) =>{
         const { email } = req.body;
         const result = await forgotPasswordService(email)
         res.status(200).json({
-            message: "email has been sent please check your inbox"
+            message: "email has been sent please check your inbox",
+            userId: result
+        })  
+    } catch (err) {
+        res.status(err.statusCode || 500).json({
+            message: err.message || "Internal server error",
+        })
+    }
+}
+
+export const resetPasswordController = async(req, res) => {
+    try {
+        const { otp, userId, password } = req.body;
+        await resetPasswordService(otp, userId, password);
+        res.status(200).json({
+            message: "password updated successfully"
         })  
     } catch (err) {
         res.status(err.statusCode || 500).json({

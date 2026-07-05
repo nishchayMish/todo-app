@@ -6,6 +6,7 @@ import VerifyEmail from "./pages/VerifyEmail"
 import Todos from "./pages/Todos"
 import ProtectedRoute from "./routes/ProtectedRoute"
 import ForgotPasswordPage from "./pages/ForgotPasswordPage"
+import ResetPasswordPage from "./pages/ResetPasswordPage"
 
 const App = () => {
   return (
@@ -15,7 +16,7 @@ const App = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/verify-otp" element={<VerifyEmail />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/todos" element={<Todos />}/>

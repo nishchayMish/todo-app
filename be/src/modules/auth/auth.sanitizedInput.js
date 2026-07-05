@@ -43,7 +43,25 @@ const resendOtpSchema = z.object({
     }),
 });
 
+const resetPasswordSchema = z.object({
+  body: z.object({
+    userId: z
+      .string({ error: "User ID is required" })
+      .uuid("Invalid user ID"),
+
+    otp: z
+      .string({ error: "OTP is required" })
+      .trim()
+      .regex(/^\d{6}$/, "OTP must be a 6-digit number"),
+
+    password: z
+      .string({ error: "Password is required" })
+      .min(6, "Password must be at least 6 characters long"),
+  }),
+});
+
 export const santitizedRegisterUserInput = validate(registerSchema);
 export const santitizedLoginUserInput = validate(loginSchema);
 export const santitizedVerifyUserInput = validate(verifySchema);
 export const santitizedResendOtpInput = validate(resendOtpSchema);
+export const santitizedResetPasswordInput = validate(resetPasswordSchema);

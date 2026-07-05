@@ -7,18 +7,28 @@ const ForgotPasswordPage = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleSubmit = async(e:React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
     try {
         const res = await api.post(ENDPOINTS.auth.forgotPassword, {
             email
         })
         if(res.status === 200){
-            navigate("/reset-password")
+            sessionStorage.setItem("userId", res.data.userId)
+            navigate("/reset-password", {
+                state: {
+                    userId: res.data.userId
+                }
+            })
         }
     } catch (err) {
         console.log(err)
+        setLoading(false)
+    } finally{
+        setLoading(false);
     }
   }
   return (
@@ -54,11 +64,19 @@ const ForgotPasswordPage = () => {
           </div>
 
           <button
+            disabled={loading || !email.trim()}
             type="submit"
-            className="w-full rounded-xl bg-slate-900 py-3 text-sm font-medium text-white transition-all hover:bg-slate-800 active:scale-[0.99]"
-          >
-            Verify Email
-          </button>
+            className={`
+                w-full rounded-xl py-3 text-sm font-medium text-white transition-all
+                ${
+                loading || !email.trim()
+                    ? "bg-slate-400 cursor-not-allowed opacity-70"
+                    : "bg-slate-900 hover:bg-slate-800 active:scale-[0.99]"
+                }
+            `}
+            >
+            {loading ? "Verifying..." : "Verify Email"}
+            </button>
         </form>
       </div>
     </div>
