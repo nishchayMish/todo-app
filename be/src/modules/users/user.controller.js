@@ -1,5 +1,6 @@
 import {
     deleteProfileImageService,
+    resendEmailOtpService,
     updateProfileImageService,
     updateProfileService,
     userProfileService,
@@ -85,6 +86,23 @@ export const verifyEmailUpdateOTPController = async (req, res) => {
 
         res.status(200).json({
             message: "Email updated successfully",
+            result,
+        });
+    } catch (err) {
+        res.status(err.statusCode || 500).json({
+            message: err.message || "Internal server error",
+        });
+    }
+};
+
+export const resendEmailOtpController = async (req, res) => {
+    try {
+        const { newEmail } = req.body;
+        const userId = req.user.userId;
+        const result = await resendEmailOtpService(userId, newEmail);
+
+        res.status(200).json({
+            message: "Email OTP resent successfully",
             result,
         });
     } catch (err) {

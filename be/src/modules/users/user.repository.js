@@ -72,6 +72,9 @@ export const updateProfile = async(userId, email, username, password) => {
 }
 
 export const findOTP = async (userId) => {
-    const res = await db.query("SELECT * FROM otp WHERE user_id=$1 order by created_at desc limit 1", [userId])
-    return res.rows[0]
-}
+    const res = await db.query(
+        "SELECT * FROM otp WHERE user_id=$1 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1",
+        [userId]
+    );
+    return res.rows[0];
+};

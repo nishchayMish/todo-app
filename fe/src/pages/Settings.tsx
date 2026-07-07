@@ -16,6 +16,7 @@ import type { User as AuthUser } from "../context/AuthContext";
 import {
   deleteProfileImage,
   fetchCurrentUser,
+  resendEmailUpdateOtp,
   updateProfile,
   updateProfileImage,
   verifyEmailUpdate,
@@ -23,6 +24,13 @@ import {
 
 // sessionStorage key for pending email change
 const PENDING_EMAIL_KEY = "pendingNewEmail";
+const RESEND_WAIT_SECONDS = 3 * 60; // 3 minutes
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
 
 const getErrorMessage = (err: unknown, fallback: string) => {
   return (
@@ -59,6 +67,8 @@ const Settings = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendingOtp, setResendingOtp] = useState(false);
+  const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -83,7 +93,6 @@ const Settings = () => {
         const profile = await fetchCurrentUser();
         syncUser(profile);
 
-        // agar pehle email change chal raha tha to OTP section dikhao
         const storedEmail = sessionStorage.getItem(PENDING_EMAIL_KEY);
         if (storedEmail) {
           setPendingNewEmail(storedEmail);
@@ -99,6 +108,16 @@ const Settings = () => {
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (resendSecondsLeft <= 0) return;
+
+    const timer = setTimeout(() => {
+      setResendSecondsLeft(resendSecondsLeft - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [resendSecondsLeft]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,6 +159,30 @@ const Settings = () => {
     }
   };
 
+  const handleResendEmailOtp = async () => {
+    if (resendSecondsLeft > 0) return;
+
+    setError("");
+    setSuccess("");
+
+    if (!pendingNewEmail) {
+      setError("New email not found. Please try again.");
+      return;
+    }
+
+    setResendingOtp(true);
+
+    try {
+      const response = await resendEmailUpdateOtp(pendingNewEmail);
+      setResendSecondsLeft(RESEND_WAIT_SECONDS);
+      setSuccess(response.message || "OTP resent successfully");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to resend OTP"));
+    } finally {
+      setResendingOtp(false);
+    }
+  };
+
   const handleSaveChanges = async () => {
     setError("");
     setSuccess("");
@@ -160,6 +203,8 @@ const Settings = () => {
         const response = await updateProfile({ username: username.trim() });
         if (response.result?.user) {
           syncUser(response.result.user);
+        } else {
+          setSavedUsername(username.trim());
         }
         setSuccess(response.message || "Username updated successfully");
       }
@@ -173,6 +218,7 @@ const Settings = () => {
         sessionStorage.setItem(PENDING_EMAIL_KEY, newEmail);
         setShowOtpSection(true);
         setOtp("");
+        setResendSecondsLeft(RESEND_WAIT_SECONDS);
         setSuccess(response.message || "OTP sent to your new email");
       }
     } catch (err: unknown) {
@@ -413,17 +459,33 @@ const Settings = () => {
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
                     />
 
-                    <button
-                      type="button"
-                      onClick={handleVerifyEmailOtp}
-                      disabled={verifyingOtp}
-                      className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition disabled:opacity-60"
-                    >
-                      {verifyingOtp && (
-                        <Loader2 className="animate-spin" size={18} />
-                      )}
-                      Submit OTP
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleVerifyEmailOtp}
+                        disabled={verifyingOtp}
+                        className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition disabled:opacity-60"
+                      >
+                        {verifyingOtp && (
+                          <Loader2 className="animate-spin" size={18} />
+                        )}
+                        Submit OTP
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResendEmailOtp}
+                        disabled={resendingOtp || resendSecondsLeft > 0}
+                        className="flex items-center gap-2 px-5 py-3 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-100 transition disabled:opacity-60"
+                      >
+                        {resendingOtp && (
+                          <Loader2 className="animate-spin" size={18} />
+                        )}
+                        {resendSecondsLeft > 0
+                          ? `Resend in ${formatTime(resendSecondsLeft)}`
+                          : "Resend OTP"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

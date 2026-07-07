@@ -19,6 +19,7 @@ export const ENDPOINTS = {
     me: "/api/v1/profile/me",
     profile: "/api/v1/profile",
     verifyEmail: "/api/v1/profile/email",
+    resendEmailOtp: "/api/v1/profile/email/resend",
     image: "/api/v1/profile/image",
   },
 };

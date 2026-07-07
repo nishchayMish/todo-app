@@ -20,13 +20,19 @@ const Todos = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const profile = await fetchCurrentUser();
-      setLocalUser(profile);
-      setUser(profile);
-      localStorage.setItem("user", JSON.stringify(profile));
+      try {
+        const profile = await fetchCurrentUser();
+        setLocalUser(profile);
+        setUser(profile);
+        localStorage.setItem("user", JSON.stringify(profile));
+      } catch {
+        // profile load fail — axios interceptor login pe redirect karega agar token invalid ho
+      }
     };
     fetchUser();
-  }, [setUser]);
+    // setUser reference stable hai, isliye sirf mount pe chalega
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const firstLetter = user?.username?.charAt(0)?.toUpperCase() || "U";
 

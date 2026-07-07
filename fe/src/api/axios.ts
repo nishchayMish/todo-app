@@ -24,12 +24,20 @@ http.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-        if(error.response?.status === 401 && !originalRequest._retry){
-            originalRequest._retry = true;     
+
+        // Sirf 401 pe refresh karo, aur ek request pe sirf ek baar
+        if (error.response?.status !== 401 || originalRequest._retry) {
+            return Promise.reject(error);
         }
+
+        originalRequest._retry = true;
 
         try {
             const refreshToken = Cookies.get("refreshToken");
+
+            if (!refreshToken) {
+                throw new Error("No refresh token");
+            }
 
             const res = await api.post(ENDPOINTS.auth.refreshToken, {
                 refreshToken
@@ -43,14 +51,13 @@ http.interceptors.response.use(
             originalRequest.headers.Authorization = `Bearer ${newToken}`
             return http(originalRequest);
         } catch (err) {
-            console.log(err);
             Cookies.remove("token");
             Cookies.remove("refreshToken");
             localStorage.clear();
-            
+
             window.location.href = "/login";
+            return Promise.reject(err);
         }
-        return Promise.reject(error);
     }
 )
 

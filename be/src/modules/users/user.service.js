@@ -218,8 +218,8 @@ export const verifyEmailUpdateOTPService = async (userId, newEmail, otp) => {
 
     if (!data) {
         throw {
-            statusCode: 404,
-            message: "OTP not found",
+            statusCode: 400,
+            message: "OTP expired",
         };
     }
 
@@ -237,15 +237,58 @@ export const verifyEmailUpdateOTPService = async (userId, newEmail, otp) => {
         };
     }
 
-    if (data.expires_at < new Date()) {
-        throw {
-            statusCode: 400,
-            message: "OTP expired",
-        };
-    }
-
     const updatedUser = await updateProfile(userId, normalizedEmail, null, null);
     await deleteOTPsByUserId(userId);
 
     return updatedUser;
+};
+
+export const resendEmailOtpService = async (userId, newEmail) => {
+    if (!userId) {
+        throw {
+            statusCode: 400,
+            message: "userId is required",
+        };
+    }
+
+    if (!newEmail) {
+        throw {
+            statusCode: 400,
+            message: "newEmail is required",
+        };
+    }
+
+    const user = await findUserById(userId);
+
+    if (!user) {
+        throw {
+            statusCode: 404,
+            message: "User not found",
+        };
+    }
+
+    const normalizedEmail = newEmail.trim().toLowerCase();
+    const existingUser = await findUserByEmail(normalizedEmail);
+
+    if (existingUser && existingUser.id !== userId) {
+        throw {
+            statusCode: 400,
+            message: "Email already in use",
+        };
+    }
+
+    if (normalizedEmail === user.email) {
+        throw {
+            statusCode: 400,
+            message: "New email is same as current email",
+        };
+    }
+
+    const otp = getOTP();
+    await insertOTP(userId, otp, "email_update");
+    await sendOTPForEmailVerification(normalizedEmail, otp);
+
+    return {
+        message: "OTP resent to your new email address",
+    };
 };

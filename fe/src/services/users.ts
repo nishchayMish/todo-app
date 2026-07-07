@@ -41,3 +41,9 @@ export const verifyEmailUpdate = async (data: {
   const res = await http.post(ENDPOINTS.users.verifyEmail, data);
   return res.data.result;
 };
+
+// Resend OTP for email change
+export const resendEmailUpdateOtp = async (newEmail: string) => {
+  const res = await http.post(ENDPOINTS.users.resendEmailOtp, { newEmail });
+  return res.data;
+};

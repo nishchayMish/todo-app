@@ -78,5 +78,12 @@ const verifyEmailUpdateSchema = z.object({
     }),
 });
 
+const resendEmailOtpSchema = z.object({
+    body: z.object({
+        newEmail: emailSchema,
+    })
+});
+
 export const sanitizedUpdateProfileInput = validate(updateProfileSchema);
 export const sanitizedVerifyEmailUpdateInput = validate(verifyEmailUpdateSchema);
+export const sanitizedResendEmailOtpInput = validate(resendEmailOtpSchema);
