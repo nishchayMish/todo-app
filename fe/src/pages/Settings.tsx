@@ -7,7 +7,7 @@ import {
   Lock,
   User,
   Mail,
-  Trash2,
+  // Trash2,
   Loader2,
   X,
 } from "lucide-react";
@@ -608,7 +608,7 @@ const Settings = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-3xl border border-red-200 shadow-sm p-8">
+          {/* <div className="bg-white rounded-3xl border border-red-200 shadow-sm p-8">
             <h2 className="text-xl font-semibold text-red-600">Danger Zone</h2>
 
             <p className="mt-3 text-slate-600">
@@ -619,7 +619,7 @@ const Settings = () => {
               <Trash2 size={18} />
               Delete Account
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
