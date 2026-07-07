@@ -12,20 +12,33 @@ import {
   X,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
+import type { User as AuthUser } from "../context/AuthContext";
 import {
   deleteProfileImage,
   fetchCurrentUser,
+  updateProfile,
   updateProfileImage,
+  verifyEmailUpdate,
 } from "../services/users";
 
-const Settings = () => {
-  const { user, setUser } = useAuth();
+// sessionStorage key for pending email change
+const PENDING_EMAIL_KEY = "pendingNewEmail";
 
-  const [username, setUsername] = useState(user?.username || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [profileImage, setProfileImage] = useState<string | null>(
-    user?.user_image ?? null
+const getErrorMessage = (err: unknown, fallback: string) => {
+  return (
+    (err as { response?: { data?: { message?: string } } })?.response?.data
+      ?.message || fallback
   );
+};
+
+const Settings = () => {
+  const { setUser } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [savedUsername, setSavedUsername] = useState("");
+  const [savedEmail, setSavedEmail] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -37,7 +50,15 @@ const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // email OTP flow
+  const [showOtpSection, setShowOtpSection] = useState(false);
+  const [pendingNewEmail, setPendingNewEmail] = useState("");
+  const [otp, setOtp] = useState("");
+
   const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -46,15 +67,28 @@ const Settings = () => {
   const displayImage = avatarPreview || profileImage;
   const firstLetter = username?.charAt(0)?.toUpperCase() || "U";
 
+  const syncUser = (updatedUser: AuthUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    setProfileImage(updatedUser.user_image ?? null);
+    setUsername(updatedUser.username);
+    setEmail(updatedUser.email);
+    setSavedUsername(updatedUser.username);
+    setSavedEmail(updatedUser.email);
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const profile = await fetchCurrentUser();
-        setUsername(profile.username);
-        setEmail(profile.email);
-        setProfileImage(profile.user_image ?? null);
-        setUser(profile);
-        localStorage.setItem("user", JSON.stringify(profile));
+        syncUser(profile);
+
+        // agar pehle email change chal raha tha to OTP section dikhao
+        const storedEmail = sessionStorage.getItem(PENDING_EMAIL_KEY);
+        if (storedEmail) {
+          setPendingNewEmail(storedEmail);
+          setShowOtpSection(true);
+        }
       } catch {
         setError("Failed to load profile");
       } finally {
@@ -63,14 +97,8 @@ const Settings = () => {
     };
 
     loadProfile();
-  }, [setUser]);
-
-  const syncUser = (updatedUser: typeof user) => {
-    if (!updatedUser) return;
-    setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-    setProfileImage(updatedUser.user_image ?? null);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,10 +116,7 @@ const Settings = () => {
       setSuccess("Profile image updated successfully");
     } catch (err: unknown) {
       setAvatarPreview(null);
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || "Failed to upload image";
-      setError(message);
+      setError(getErrorMessage(err, "Failed to upload image"));
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -109,12 +134,119 @@ const Settings = () => {
       setAvatarPreview(null);
       setSuccess("Profile image removed successfully");
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || "Failed to delete image";
-      setError(message);
+      setError(getErrorMessage(err, "Failed to delete image"));
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    setError("");
+    setSuccess("");
+
+    const isUsernameChanged = username.trim() !== savedUsername;
+    const isEmailChanged = email.trim().toLowerCase() !== savedEmail.toLowerCase();
+
+    if (!isUsernameChanged && !isEmailChanged) {
+      setError("No changes to save");
+      return;
+    }
+
+    setSavingProfile(true);
+
+    try {
+      // pehle username update karo (agar change hua ho)
+      if (isUsernameChanged) {
+        const response = await updateProfile({ username: username.trim() });
+        if (response.result?.user) {
+          syncUser(response.result.user);
+        }
+        setSuccess(response.message || "Username updated successfully");
+      }
+
+      // agar email change hua hai to OTP bhejo
+      if (isEmailChanged) {
+        const newEmail = email.trim().toLowerCase();
+        const response = await updateProfile({ email: newEmail });
+
+        setPendingNewEmail(newEmail);
+        sessionStorage.setItem(PENDING_EMAIL_KEY, newEmail);
+        setShowOtpSection(true);
+        setOtp("");
+        setSuccess(response.message || "OTP sent to your new email");
+      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to update profile"));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!pendingNewEmail) {
+      setError("New email not found. Please try again.");
+      return;
+    }
+
+    if (!otp.trim()) {
+      setError("Please enter OTP");
+      return;
+    }
+
+    setVerifyingOtp(true);
+
+    try {
+      const updatedUser = await verifyEmailUpdate({
+        newEmail: pendingNewEmail,
+        otp: otp.trim(),
+      });
+
+      syncUser(updatedUser);
+      sessionStorage.removeItem(PENDING_EMAIL_KEY);
+      setShowOtpSection(false);
+      setPendingNewEmail("");
+      setOtp("");
+      setSuccess("Email updated successfully");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to verify OTP"));
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError("Please fill all password fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirm password do not match");
+      return;
+    }
+
+    setUpdatingPassword(true);
+
+    try {
+      const response = await updateProfile({
+        currentPassword,
+        newPassword,
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setSuccess(response.message || "Password updated successfully");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to update password"));
+    } finally {
+      setUpdatingPassword(false);
     }
   };
 
@@ -251,10 +383,49 @@ const Settings = () => {
                   </div>
                 </div>
 
-                <button className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition">
-                  <Save size={18} />
+                <button
+                  type="button"
+                  onClick={handleSaveChanges}
+                  disabled={savingProfile}
+                  className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition disabled:opacity-60"
+                >
+                  {savingProfile ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <Save size={18} />
+                  )}
                   Save Changes
                 </button>
+
+                {showOtpSection && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <p className="text-sm text-slate-600">
+                      OTP sent to <strong>{pendingNewEmail}</strong>. Enter it
+                      below to confirm your new email.
+                    </p>
+
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyEmailOtp}
+                      disabled={verifyingOtp}
+                      className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition disabled:opacity-60"
+                    >
+                      {verifyingOtp && (
+                        <Loader2 className="animate-spin" size={18} />
+                      )}
+                      Submit OTP
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -360,8 +531,17 @@ const Settings = () => {
               </div>
             </div>
 
-            <button className="mt-6 flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition">
-              <Lock size={18} />
+            <button
+              type="button"
+              onClick={handleUpdatePassword}
+              disabled={updatingPassword}
+              className="mt-6 flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition disabled:opacity-60"
+            >
+              {updatingPassword ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Lock size={18} />
+              )}
               Update Password
             </button>
           </div>

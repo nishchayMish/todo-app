@@ -17,6 +17,8 @@ export const ENDPOINTS = {
   },
   users: {
     me: "/api/v1/profile/me",
+    profile: "/api/v1/profile",
+    verifyEmail: "/api/v1/profile/email",
     image: "/api/v1/profile/image",
   },
 };

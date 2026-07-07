@@ -56,9 +56,15 @@ export const deleteProfileImageController = async (req, res) => {
 
 export const updateProfileController = async (req, res) => {
     try {
-        const { email, username, password } = req.body;
+        const { email, username, currentPassword, newPassword } = req.body;
         const userId = req.user.userId;
-        const result = await updateProfileService(userId, email, username, password);
+        const result = await updateProfileService(
+            userId,
+            email,
+            username,
+            currentPassword,
+            newPassword
+        );
 
         res.status(200).json({
             message: "Profile updated successfully",

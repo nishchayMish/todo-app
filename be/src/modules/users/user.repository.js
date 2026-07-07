@@ -10,7 +10,7 @@ export const userProfile = async (userId) => {
 
 export const findUserById = async (userId) => {
     const res = await db.query(
-        "SELECT id, username, email, user_image, cloudinary_public_id FROM users WHERE id=$1",
+        "SELECT id, username, email, user_image, cloudinary_public_id, password FROM users WHERE id=$1",
         [userId]
     );
     return res.rows[0];
@@ -50,6 +50,11 @@ export const insertOTP = async (userId, otp, purpose) => {
         "INSERT INTO otp(user_id, otp, purpose, expires_at) VALUES($1, $2, $3, NOW() + INTERVAL '3 minutes') RETURNING *",
         [userId, otp, purpose]
     )
+    return res.rows[0]
+}
+
+export const findUserByEmail = async (email) => {
+    const res = await db.query("SELECT * FROM users WHERE email=$1", [email])
     return res.rows[0]
 }
 

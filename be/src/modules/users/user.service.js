@@ -2,7 +2,9 @@ import { DeleteImageFromCloudinary, UploadOnCloudinary } from "../../config/clou
 import { getOTP, sendOTPForEmailVerification } from "../../utils/helpers.js";
 import {
     clearProfileImage,
+    deleteOTPsByUserId,
     findOTP,
+    findUserByEmail,
     findUserById,
     insertOTP,
     updateProfile,
@@ -111,7 +113,13 @@ export const deleteProfileImageService = async (userId) => {
     return clearProfileImage(userId);
 };
 
-export const updateProfileService = async (userId, email, username, password) => {
+export const updateProfileService = async (
+    userId,
+    email,
+    username,
+    currentPassword,
+    newPassword
+) => {
     if (!userId) {
         throw {
             statusCode: 400,
@@ -129,33 +137,56 @@ export const updateProfileService = async (userId, email, username, password) =>
     }
 
     if (username) {
-        await updateProfile(userId, username);
+        const updatedUser = await updateProfile(userId, null, username, null);
         return {
-            message: "Username updated successfully"
+            message: "Username updated successfully",
+            user: updatedUser,
         };
     }
 
-    if(password){
-        const isPasswordCorrect = await bcrypt.compare(password, user.password);
-        if(!isPasswordCorrect){
+    if (currentPassword && newPassword) {
+        const isPasswordCorrect = await bcrypt.compare(
+            currentPassword,
+            user.password
+        );
+        if (!isPasswordCorrect) {
             throw {
                 statusCode: 400,
-                message: "Invalid password",
+                message: "Invalid current password",
             };
         }
-        const hashedPassword = await bcrypt.hash(password, 10)
-        await updateProfile(userId, hashedPassword);
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await updateProfile(userId, null, null, hashedPassword);
         return {
-            message: "Password updated successfully"
+            message: "Password updated successfully",
         };
     }
 
-    if(email){
+    if (email) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const existingUser = await findUserByEmail(normalizedEmail);
+
+        if (existingUser) {
+            throw {
+                statusCode: 400,
+                message: "Email already in use",
+            };
+        }
+
+        if (normalizedEmail === user.email) {
+            throw {
+                statusCode: 400,
+                message: "New email is same as current email",
+            };
+        }
+
+
         const otp = getOTP();
         await insertOTP(userId, otp, "email_update");
-        await sendOTPForEmailVerification(email, otp);
+        await sendOTPForEmailVerification(normalizedEmail, otp);
         return {
-            message: "Email update OTP sent successfully"
+            message: "OTP sent to your new email address",
         };
     }
 };
@@ -180,28 +211,41 @@ export const verifyEmailUpdateOTPService = async (userId, newEmail, otp) => {
         };
     }
 
+    const normalizedEmail = newEmail.trim().toLowerCase();
+    const normalizedOtp = String(otp).trim();
+
     const data = await findOTP(userId);
-    
-    if(!data){
+
+    if (!data) {
         throw {
             statusCode: 404,
             message: "OTP not found",
         };
     }
-    if(data.otp !== otp){
+
+    if (data.purpose !== "email_update") {
         throw {
             statusCode: 400,
             message: "Invalid OTP",
         };
     }
-    if(data.expires_at < new Date()){
+
+    if (String(data.otp).trim() !== normalizedOtp) {
+        throw {
+            statusCode: 400,
+            message: "Invalid OTP",
+        };
+    }
+
+    if (data.expires_at < new Date()) {
         throw {
             statusCode: 400,
             message: "OTP expired",
         };
     }
-    await updateProfile(userId, newEmail);
-    return {
-        message: "Email updated successfully"
-    };
+
+    const updatedUser = await updateProfile(userId, normalizedEmail, null, null);
+    await deleteOTPsByUserId(userId);
+
+    return updatedUser;
 };
