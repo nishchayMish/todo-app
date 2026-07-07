@@ -7,6 +7,7 @@ import Todos from "./pages/Todos"
 import ProtectedRoute from "./routes/ProtectedRoute"
 import ForgotPasswordPage from "./pages/ForgotPasswordPage"
 import ResetPasswordPage from "./pages/ResetPasswordPage"
+import Settings from "./pages/Settings"
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
 
       <Route element={<ProtectedRoute />}>
         <Route path="/todos" element={<Todos />}/>
+        <Route path="/settings" element={<Settings />}/>
       </Route>
     </Routes>
   )

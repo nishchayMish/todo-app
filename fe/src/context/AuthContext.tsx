@@ -6,10 +6,11 @@ interface AuthContextType {
     setUser: React.Dispatch<React.SetStateAction<User | null >>
 }
 
-type User = {
+export type User = {
     id: string,
     username: string,
-    email: string
+    email: string,
+    user_image?: string | null
 };
 
 const getStoredUser = (): User | null => {

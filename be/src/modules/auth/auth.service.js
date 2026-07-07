@@ -147,12 +147,7 @@ export const loginUserService = async (email, password) => {
 
     return{
         token,
-        refreshToken,
-        userData:{
-            id: user.id,
-            username: user.username,
-            email: user.email
-        }
+        refreshToken
     }
 }
 

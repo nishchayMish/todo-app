@@ -4,6 +4,7 @@ import { ENDPOINTS } from "../config";
 import useAuth from "../hooks/useAuth";
 import { api } from "../api/axios";
 import Cookies from "js-cookie";
+import { fetchCurrentUser } from "../services/users";
 
 type LoginFormData = {
   email: string;
@@ -44,12 +45,11 @@ const Login = () => {
         return;
       }
 
-      const user = result.userData;
-
-      localStorage.setItem("user", JSON.stringify(user));
       Cookies.set("token", result.token);
       Cookies.set("refreshToken", result.refreshToken);
-      
+
+      const user = await fetchCurrentUser();
+      localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
       navigate("/todos");
 
